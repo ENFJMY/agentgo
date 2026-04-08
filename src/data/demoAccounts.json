@@ -1,0 +1,67 @@
+[
+  {
+    "clientName": "아이티센클로잇",
+    "clientId": "itcencloit",
+    "logo": "/logos/itcencloit.png",
+    "accounts": [
+      {
+        "roleLabel": "Admin",
+        "username": "admin_itcencloit",
+        "password": "123456"
+      },
+      {
+        "roleLabel": "User",
+        "username": "user_itcencloit",
+        "password": "123456"
+      }
+    ]
+  },
+  {
+    "clientName": "부산경제진흥원",
+    "clientId": "busaneconomy",
+    "accounts": [
+      {
+        "roleLabel": "Admin",
+        "username": "admin_busaneconomy",
+        "password": "123456"
+      },
+      {
+        "roleLabel": "User",
+        "username": "user_busaneconmy",
+        "password": "123456"
+      }
+    ]
+  },
+  {
+    "clientName": "국립부경대학교",
+    "clientId": "pknu",
+    "accounts": [
+      {
+        "roleLabel": "Admin",
+        "username": "admin_pknu",
+        "password": "123456"
+      },
+      {
+        "roleLabel": "User",
+        "username": "user_pknu",
+        "password": "123456"
+      }
+    ]
+  },
+  {
+    "clientName": "동서대학교",
+    "clientId": "dongseo",
+    "accounts": [
+      {
+        "roleLabel": "Admin",
+        "username": "admin_dongseo",
+        "password": "123456"
+      },
+      {
+        "roleLabel": "User",
+        "username": "user_dongseo",
+        "password": "123456"
+      }
+    ]
+  }
+]
