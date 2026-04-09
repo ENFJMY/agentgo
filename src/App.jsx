@@ -3,7 +3,6 @@ import agentGoLogo from "./assets/AgentGo_Logo.png";
 import demoAccounts from "./data/demoAccounts.json";
 import agentsSeed from "./data/agents.json";
 
-import commonAnswers from "./data/answers/common.json";
 import itcencloitAnswers from "./data/answers/itcencloit.json";
 import busaneconomyAnswers from "./data/answers/busaneconomy.json";
 import pknuAnswers from "./data/answers/pknu.json";
@@ -13,7 +12,6 @@ import LoginPage from "./pages/LoginPage";
 import WorkspacePage from "./pages/WorkspacePage";
 
 const SESSION_KEY = "agentgo-session";
-const THEME_KEY = "agentgo-theme";
 const DEFAULT_BOT_MESSAGE = "해당 답변은 지금 학습중입니다.";
 
 const ANSWER_MAP = {
@@ -37,6 +35,56 @@ function normalizeQuestion(text) {
   return text.replace(/\s+/g, " ").trim();
 }
 
+function formatKoreanRelativeDate(dayBefore) {
+  if (dayBefore === 0) return "오늘";
+  if (dayBefore === -1) return "어제";
+  if (dayBefore === -2) return "그저께";
+
+  const date = new Date();
+  date.setDate(date.getDate() + dayBefore);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${month}.${day}`;
+}
+
+function formatDateLabel(dayBefore) {
+  const date = new Date();
+  date.setDate(date.getDate() + dayBefore);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${month}-${day}`;
+}
+
+function renderMailSummaryTemplate(template, rows) {
+  const templateHtml = Array.isArray(template) ? template.join("\n") : template;
+  const rowHtml = rows
+    .map((item) => {
+      const dateLabel = formatDateLabel(item.daybefore);
+      return `<tr><td style="padding: 10px 12px; border-bottom: 1px solid #e3e8f0; white-space: nowrap;">${dateLabel}</td><td style="padding: 10px 12px; border-bottom: 1px solid #e3e8f0; white-space: nowrap;">${item.sender}</td><td style="padding: 10px 12px; border-bottom: 1px solid #e3e8f0; font-weight: 600; white-space: nowrap; max-width: 240px; overflow: hidden; text-overflow: ellipsis;">${item.subject}</td><td style="padding: 10px 12px; border-bottom: 1px solid #e3e8f0; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.summary}</td></tr>`;
+    })
+    .join("");
+
+  const mailListHtml = rows
+    .map((item) => {
+      const dateLabel = formatDateLabel(item.daybefore);
+      const timeLabel = item.time ? ` ${item.time}` : "";
+      return `<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border: 1px solid #e8eef5; border-radius: 16px; background: #ffffff; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(31, 52, 86, 0.05);"><div style="display: flex; align-items: center; gap: 12px; min-width: 0;"><div style="flex-shrink: 0; min-width: 102px; padding: 10px 12px; border-radius: 999px; background: #eef4ff; color: #2f6fff; font-weight: 700; font-size: 13px; text-align: center;">${dateLabel}${timeLabel}</div><div style="min-width: 0; display: flex; gap: 8px; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><div style="font-size: 14px; color: #17223b; font-weight: 700; overflow: hidden; text-overflow: ellipsis;">${item.sender}</div><span style="color: #c1c9db;">•</span><div style="font-size: 14px; color: #4f5c78; overflow: hidden; text-overflow: ellipsis;">${item.subject}</div></div></div><div style="flex-shrink: 0; color: #2f6fff; font-size: 15px;">↗</div></div>`;
+    })
+    .join("");
+
+  return templateHtml
+    .replace(/{{rowHtml}}/g, rowHtml)
+    .replace(/{{mailListHtml}}/g, mailListHtml)
+    .replace(/{{rowsLength}}/g, String(rows.length));
+}
+
+function buildWeeklyMailSummary(rows) {
+  return renderMailSummaryTemplate(
+    `<div style="font-size: 15px; color: #17223b; line-height: 1.6;"><p style="margin: 0 0 8px; font-weight: 700;">이번 주 수신한 메일 요약 결과입니다.</p><div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #17223b; text-align: left;"><thead><tr><th style="padding: 10px 12px; border-bottom: 2px solid #cbd5e1; font-weight: 700;">날짜</th><th style="padding: 10px 12px; border-bottom: 2px solid #cbd5e1; font-weight: 700;">발신자</th><th style="padding: 10px 12px; border-bottom: 2px solid #cbd5e1; font-weight: 700;">제목</th><th style="padding: 10px 12px; border-bottom: 2px solid #cbd5e1; font-weight: 700;">주요 내용 요약</th></tr></thead><tbody>{{rowHtml}}</tbody></table></div><div style="margin-top: 16px;"><div style="color: #17223b; font-weight: 700; font-size: 15px; margin-bottom: 12px;">📧 메일 목록 ({{rowsLength}}개)</div>{{mailListHtml}}</div></div>`,
+    rows
+  );
+}
+
 function findMatchedAccount(clients, username, password) {
   const trimmedUsername = username.trim();
   const trimmedPassword = password.trim();
@@ -54,6 +102,7 @@ function findMatchedAccount(clients, username, password) {
         clientId: client.clientId,
         clientName: client.clientName,
         logo: client.logo || "",
+        visibleAgents: matched.visibleAgents || [],
       };
     }
   }
@@ -63,21 +112,44 @@ function findMatchedAccount(clients, username, password) {
 
 function findBotAnswer(clientId, questionText) {
   const normalized = normalizeQuestion(questionText);
-  if (!normalized) return DEFAULT_BOT_MESSAGE;
+  if (!normalized) {
+    return {
+      answer: DEFAULT_BOT_MESSAGE,
+      delay: 3,
+    };
+  }
 
   const clientAnswers = ANSWER_MAP[clientId] || [];
 
   const clientMatched = clientAnswers.find(
     (item) => normalizeQuestion(item.question) === normalized
   );
-  if (clientMatched) return clientMatched.answer;
+  if (clientMatched) {
+    const payload = {
+      answer: clientMatched.answer,
+      delay: typeof clientMatched.delay === "number" ? clientMatched.delay : 3,
+      agentId: clientMatched.agentId || null,
+    };
 
-  const commonMatched = commonAnswers.find(
-    (item) => normalizeQuestion(item.question) === normalized
-  );
-  if (commonMatched) return commonMatched.answer;
+    if (clientMatched.mailSummaryRows) {
+      if (clientMatched.mailSummaryTemplate) {
+        payload.richHtml = renderMailSummaryTemplate(
+          clientMatched.mailSummaryTemplate,
+          clientMatched.mailSummaryRows
+        );
+      } else {
+        payload.richHtml = buildWeeklyMailSummary(clientMatched.mailSummaryRows);
+      }
+    }
 
-  return DEFAULT_BOT_MESSAGE;
+    return payload;
+  }
+
+  return {
+    answer: DEFAULT_BOT_MESSAGE,
+    delay: 3,
+    agentId: null,
+  };
 }
 
 function getChatStorageKey(session) {
@@ -88,18 +160,36 @@ function getAgentStorageKey(session) {
   return `agentgo-agents:${session.clientId}:${session.username}`;
 }
 
-export default function App() {
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    return localStorage.getItem(THEME_KEY) === "dark";
-  });
+function getWorkSummaryData(clientId) {
+  const clientAnswers = ANSWER_MAP[clientId] || [];
+  const summaryEntry = clientAnswers.find(
+    (item) => item && typeof item === "object" && item.workSummary
+  );
+  if (summaryEntry?.workSummary) {
+    return summaryEntry.workSummary;
+  }
 
+  const defaultSummaryEntry = (ANSWER_MAP.itcencloit || []).find(
+    (item) => item && typeof item === "object" && item.workSummary
+  );
+
+  return defaultSummaryEntry?.workSummary || null;
+}
+
+function getClientQuestions(clientId) {
+  const clientAnswers = ANSWER_MAP[clientId] || [];
+  const questions = clientAnswers
+    .map((item) => item?.question)
+    .filter((question) => typeof question === "string")
+    .filter((question) => !question.startsWith("__"));
+
+  return Array.from(new Set(questions));
+}
+
+export default function App() {
   const [session, setSession] = useState(() => readStorage(SESSION_KEY, null));
 
-  const theme = isDarkMode ? darkTheme : lightTheme;
-
-  useEffect(() => {
-    localStorage.setItem(THEME_KEY, isDarkMode ? "dark" : "light");
-  }, [isDarkMode]);
+  const theme = lightTheme;
 
   useEffect(() => {
     if (session) {
@@ -121,6 +211,7 @@ export default function App() {
       username: matchedAccount.username,
       roleLabel: matchedAccount.roleLabel,
       logo: matchedAccount.logo || "",
+      visibleAgents: matchedAccount.visibleAgents || [],
     });
   };
 
@@ -171,8 +262,6 @@ export default function App() {
       {!session ? (
         <LoginPage
           theme={theme}
-          isDarkMode={isDarkMode}
-          onToggleTheme={() => setIsDarkMode((prev) => !prev)}
           clients={demoAccounts}
           onLoginSuccess={handleLoginSuccess}
           fallbackLogo={agentGoLogo}
@@ -181,8 +270,6 @@ export default function App() {
       ) : (
         <WorkspacePage
           theme={theme}
-          isDarkMode={isDarkMode}
-          onToggleTheme={() => setIsDarkMode((prev) => !prev)}
           session={session}
           currentClient={currentClient}
           fallbackLogo={agentGoLogo}
@@ -191,6 +278,8 @@ export default function App() {
           findBotAnswer={findBotAnswer}
           getChatStorageKey={getChatStorageKey}
           getAgentStorageKey={getAgentStorageKey}
+          workSummaryData={getWorkSummaryData(session.clientId)}
+          quickQuestionList={getClientQuestions(session.clientId)}
         />
       )}
     </div>
@@ -198,8 +287,8 @@ export default function App() {
 }
 
 const lightTheme = {
-  pageBackground: "linear-gradient(180deg, #f6f8fc 0%, #f5f7fb 100%)",
-  workspaceBackground: "#f7f8fb",
+  pageBackground: "#ffffff",
+  workspaceBackground: "#ffffff",
   sidebarBackground: "#eef2f7",
   sidebarBorder: "#d9e0ec",
   sidebarItemText: "#3f4b63",

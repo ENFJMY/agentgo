@@ -1,0 +1,52 @@
+[
+  {
+    "id": "mail_receive",
+    "label": "메일 수신",
+    "enabled": true
+  },
+  {
+    "id": "mail_send",
+    "label": "메일 발신",
+    "enabled": true
+  },
+  {
+    "id": "calendar",
+    "label": "캘린더",
+    "enabled": true
+  },
+  {
+    "id": "ai_web_search",
+    "label": "AI 웹 검색",
+    "enabled": true
+  },
+  {
+    "id": "todo",
+    "label": "TO-DO",
+    "enabled": true
+  },
+  {
+    "id": "contract_review",
+    "label": "표준 계약서 셀프 검토",
+    "enabled": true
+  },
+  {
+    "id": "meeting_summary",
+    "label": "회의록 요약",
+    "enabled": true
+  },
+  {
+    "id": "revenue_checklist",
+    "label": "수익인식 체크리스트 작성지원",
+    "enabled": true
+  },
+  {
+    "id": "document_summary",
+    "label": "문서 요약",
+    "enabled": true
+  },
+  {
+    "id": "corporate_card",
+    "label": "법인카드 계정 및 적요 작성",
+    "enabled": true
+  }
+]

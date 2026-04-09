@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Sidebar from "./Sidebar";
+import WorksummaryPage from "./WorksummaryPage";
 
 const HOME_TABS = ["빠른 작업", "업무 자동화", "외부 도구"];
 
 const QUICK_ACTIONS = [
   { id: "work-time", label: "근로 시간 등록해줘", icon: "clock" },
-  { id: "schedule", label: "오늘 일정 요약해줘", icon: "calendar" },
+  { id: "schedule", label: "오늘 일정 알려줘", icon: "calendar" },
   { id: "mail-summary", label: "이번 주 내가 받은 메일 요약해줘", icon: "mail" },
   { id: "policy", label: "내년 인사 관리 규정 알려줘", icon: "policy" },
 ];
@@ -30,8 +31,6 @@ function normalizeQuestion(text) {
 
 export default function WorkspacePage({
   theme,
-  isDarkMode,
-  onToggleTheme,
   session,
   currentClient,
   fallbackLogo,
@@ -40,6 +39,8 @@ export default function WorkspacePage({
   findBotAnswer,
   getChatStorageKey,
   getAgentStorageKey,
+  workSummaryData,
+  quickQuestionList = [],
 }) {
   const [activeMenu, setActiveMenu] = useState("home");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -49,7 +50,15 @@ export default function WorkspacePage({
   const [composerText, setComposerText] = useState("");
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [isMicActive, setIsMicActive] = useState(false);
-  const [agentStates, setAgentStates] = useState(agentsSeed);
+  const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+
+  const filteredAgents = useMemo(() => {
+    return agentsSeed.filter((agent) => 
+      (session.visibleAgents || []).includes(agent.id)
+    );
+  }, [agentsSeed, session.visibleAgents]);
+
+  const [agentStates, setAgentStates] = useState(filteredAgents);
 
   const topRightRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -59,14 +68,28 @@ export default function WorkspacePage({
   const agentStorageKey = getAgentStorageKey(session);
 
   useEffect(() => {
+    const savedAgentStates = readStorage(agentStorageKey, []);
+    const mergedAgentStates = filteredAgents.map((agent) => {
+      const saved = savedAgentStates.find((s) => s.id === agent.id);
+      return saved ? { ...agent, enabled: saved.enabled } : agent;
+    });
+    setAgentStates(mergedAgentStates);
     setMessages(readStorage(chatStorageKey, []));
-    setAgentStates(readStorage(agentStorageKey, agentsSeed));
     setActiveMenu("home");
     setComposerText("");
     setAttachedFiles([]);
     setOpenDropdown(null);
     setIsMicActive(false);
-  }, [chatStorageKey, agentStorageKey, agentsSeed]);
+  }, [chatStorageKey, agentStorageKey, filteredAgents]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(chatStorageKey, JSON.stringify(messages));
@@ -97,6 +120,50 @@ export default function WorkspacePage({
     return agentStates.filter((item) => item.enabled).length;
   }, [agentStates]);
 
+  const quickQuestions = useMemo(() => {
+    return Array.isArray(quickQuestionList) ? quickQuestionList : [];
+  }, [quickQuestionList]);
+  const [copiedKey, setCopiedKey] = useState("");
+
+  const markCopied = (key) => {
+    setCopiedKey(key);
+    setTimeout(() => {
+      setCopiedKey((prev) => (prev === key ? "" : prev));
+    }, 1200);
+  };
+
+  const copyTextToClipboard = async (text, key) => {
+    const value = String(text || "");
+    if (!value.trim()) return;
+
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = value;
+        textArea.setAttribute("readonly", "");
+        textArea.style.position = "absolute";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+      markCopied(key);
+    } catch {
+      // Ignore clipboard errors in unsupported environments.
+    }
+  };
+
+  const handleCopyAllQuestions = () => {
+    copyTextToClipboard(quickQuestions.join("\n"), "all");
+  };
+
+  const handleCopyQuestion = (question, index) => {
+    copyTextToClipboard(question, `q-${index}`);
+  };
+
   const normalizedComposer = normalizeQuestion(composerText);
 
   const sendMessage = (directText = null) => {
@@ -117,18 +184,48 @@ export default function WorkspacePage({
     setComposerText("");
     setAttachedFiles([]);
 
-    const reply = findBotAnswer(session.clientId, rawText);
+    const replyPayload = findBotAnswer(session.clientId, rawText);
+    const delaySeconds = Math.max(0, parseFloat(replyPayload.delay) || 3);
+    const targetAgent = replyPayload.agentId
+      ? agentStates.find((item) => item.id === replyPayload.agentId)
+      : null;
+    const answerText = targetAgent && !targetAgent.enabled
+      ? `${targetAgent.label} 에이전트가 비활성화되어 있어, 도움을 드리기 어렵습니다.\n${targetAgent.label} 에이전트를 활성화하거나 관리자에게 문의해주세요.`
+      : replyPayload.answer;
 
+    // 로딩 메시지를 먼저 표시
     setTimeout(() => {
-      const botMessage = {
-        id: makeId("assistant"),
+      const loadingMessage = {
+        id: makeId("loading"),
         role: "assistant",
-        content: reply,
+        content: "답변을 생성 중입니다...",
+        isLoading: true,
         attachments: [],
         createdAt: new Date().toISOString(),
       };
 
-      setMessages((prev) => [...prev, botMessage]);
+      setMessages((prev) => [...prev, loadingMessage]);
+
+      // delaySeconds 후 실제 답변으로 교체
+      setTimeout(() => {
+        const botMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          content: answerText,
+          richHtml: replyPayload.richHtml || null,
+          isLoading: false,
+          attachments: [],
+          createdAt: new Date().toISOString(),
+        };
+
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          if (newMessages[newMessages.length - 1]?.isLoading) {
+            newMessages[newMessages.length - 1] = botMessage;
+          }
+          return newMessages;
+        });
+      }, delaySeconds * 1000);
     }, 350);
   };
 
@@ -139,8 +236,8 @@ export default function WorkspacePage({
     }, 0);
   };
 
-  const handleFileSelect = (event) => {
-    const files = Array.from(event.target.files || []).map((file) => ({
+  const appendAttachedFiles = (fileList) => {
+    const files = Array.from(fileList || []).map((file) => ({
       id: makeId("file"),
       name: file.name,
     }));
@@ -148,6 +245,10 @@ export default function WorkspacePage({
     if (files.length > 0) {
       setAttachedFiles((prev) => [...prev, ...files]);
     }
+  };
+
+  const handleFileSelect = (event) => {
+    appendAttachedFiles(event.target.files);
 
     event.target.value = "";
   };
@@ -165,6 +266,16 @@ export default function WorkspacePage({
   };
 
   const isHomeEmpty = activeMenu === "home" && messages.length === 0;
+
+  // 반응형 스타일 계산
+  const isMobile = windowWidth < 768;
+  const isTablet = windowWidth < 1024;
+  const responsiveStyles = {
+    workspaceBodyPadding: "72px 16px 32px 16px",
+    homePanelPadding: isMobile ? "0 16px" : isTablet ? "0 20px" : "0 24px",
+    quickActionGridColumns: isMobile ? "1fr" : "1fr 1fr",
+    homePanelGap: isMobile ? "12px" : "18px",
+  };
 
   return (
     <div style={styles.workspaceShell}>
@@ -186,14 +297,131 @@ export default function WorkspacePage({
           backgroundColor: theme.workspaceBackground,
         }}
       >
+        {activeMenu === "home" ? (
         <div style={styles.workspaceTopBar} ref={topRightRef}>
-          <ThemeToggle
-            isDarkMode={isDarkMode}
-            theme={theme}
-            onToggle={onToggleTheme}
-          />
+          <div style={styles.dropdownWrap}>
+            <button
+              type="button"
+              onClick={() =>
+                setOpenDropdown((prev) => (prev === "help" ? null : "help"))
+              }
+              style={{
+                ...styles.helpIconButton,
+                backgroundColor: theme.surface,
+                color: theme.secondaryText,
+                border: `1px solid ${theme.border}`,
+                boxShadow: theme.softShadow,
+              }}
+              aria-label="빠른 작업 도움말"
+            >
+              <Icon name="help" size={14} />
+            </button>
+
+            {openDropdown === "help" ? (
+              <div
+                style={{
+                  ...styles.dropdownPanel,
+                  left: "auto",
+                  right: 0,
+                  backgroundColor: theme.surface,
+                  border: `1px solid ${theme.border}`,
+                  boxShadow: theme.dropdownShadow,
+                  maxHeight: "342px",
+                }}
+              >
+                <div style={styles.quickDropdownScroll}>
+                  <div
+                    style={{
+                      ...styles.quickDropdownHeader,
+                      borderBottom: `1px solid ${theme.borderSoft}`,
+                    }}
+                  >
+                    <span
+                      style={{
+                        ...styles.quickHeaderLabel,
+                        color: theme.primaryText,
+                      }}
+                    >
+                      전체
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyAllQuestions}
+                      title={copiedKey === "all" ? "전체 복사됨" : "전체 리스트 복사"}
+                      aria-label={copiedKey === "all" ? "전체 복사됨" : "전체 리스트 복사"}
+                      style={{
+                        ...styles.quickCopyAllButton,
+                        ...(copiedKey === "all" ? styles.quickCopyDoneButton : null),
+                        border: `1px solid ${theme.border}`,
+                        backgroundColor: theme.surface,
+                        color: copiedKey === "all" ? theme.accent : theme.primaryText,
+                      }}
+                    >
+                      {copiedKey === "all" ? (
+                        <span style={styles.quickCopyDoneLabel}>복사됨</span>
+                      ) : (
+                        <Icon name="copy" size={14} />
+                      )}
+                    </button>
+                  </div>
+
+                  {quickQuestions.length > 0 ? (
+                    quickQuestions.map((question, index) => (
+                      <div
+                        key={`quick-question-${index}`}
+                        style={{
+                          ...styles.quickQuestionRow,
+                          borderBottom: `1px solid ${theme.borderSoft}`,
+                          color: theme.primaryText,
+                        }}
+                      >
+                        <span
+                          style={{
+                            ...styles.quickQuestionBullet,
+                            color: theme.accent,
+                          }}
+                        >
+                          •
+                        </span>
+                        <span style={styles.quickQuestionText}>{question}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyQuestion(question, index)}
+                          title={copiedKey === `q-${index}` ? "복사됨" : "복사"}
+                          aria-label={copiedKey === `q-${index}` ? "복사됨" : "복사"}
+                          style={{
+                            ...styles.quickCopyItemButton,
+                            ...(copiedKey === `q-${index}` ? styles.quickCopyDoneButton : null),
+                            border: `1px solid ${theme.border}`,
+                            backgroundColor: theme.surface,
+                            color: copiedKey === `q-${index}` ? theme.accent : theme.primaryText,
+                          }}
+                        >
+                          {copiedKey === `q-${index}` ? (
+                            <span style={styles.quickCopyDoneLabel}>복사됨</span>
+                          ) : (
+                            <Icon name="copy" size={13} />
+                          )}
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div
+                      style={{
+                        ...styles.quickQuestionEmpty,
+                        color: theme.secondaryText,
+                      }}
+                    >
+                      등록된 질문이 없습니다.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
 
           <div style={styles.dropdownWrap}>
+
             <button
               type="button"
               onClick={() =>
@@ -308,105 +536,99 @@ export default function WorkspacePage({
             ) : null}
           </div>
         </div>
+        ) : null}
 
-        <div style={styles.workspaceBody}>
-          {activeMenu !== "home" ? (
-            <div
-              style={{
-                ...styles.placeholderCard,
-                backgroundColor: theme.surface,
-                border: `1px solid ${theme.border}`,
-                boxShadow: theme.cardShadow,
-              }}
-            >
+        <div
+          style={{
+            ...styles.workspaceBody,
+            padding: activeMenu === "daily-summary"
+              ? "18px 12px 24px"
+              : responsiveStyles.workspaceBodyPadding,
+          }}
+        >
+          <div style={styles.workspaceContent}>
+            {activeMenu === "daily-summary" ? (
+              <div style={styles.summaryPageWrap}>
+                <WorksummaryPage theme={theme} summaryData={workSummaryData} />
+              </div>
+            ) : activeMenu !== "home" ? (
               <div
                 style={{
-                  ...styles.placeholderTitle,
-                  color: theme.primaryText,
+                  ...styles.placeholderCard,
+                  backgroundColor: theme.surface,
+                  boxShadow: theme.cardShadow,
                 }}
               >
-                해당 화면은 추후 개발 예정입니다.
-              </div>
-              <div
-                style={{
-                  ...styles.placeholderSub,
-                  color: theme.secondaryText,
-                }}
-              >
-                현재는 Hi, AgentGo 화면만 1차 구현되었습니다.
-              </div>
-            </div>
-          ) : (
-            <div style={styles.homePanel}>
-              {isHomeEmpty ? (
-                <div style={styles.emptyHero}>
-                  <img
-                    src={fallbackLogo}
-                    alt="AgentGo"
-                    style={styles.emptyHeroLogo}
-                  />
-                  <h1
-                    style={{
-                      ...styles.emptyHeroTitle,
-                      color: theme.primaryText,
-                    }}
-                  >
-                    무엇을 도와드릴까요?
-                  </h1>
-                  <p
-                    style={{
-                      ...styles.emptyHeroSub,
-                      color: theme.secondaryText,
-                    }}
-                  >
-                    원하는 작업을 선택하거나 입력해보세요.
-                  </p>
-                </div>
-              ) : (
                 <div
                   style={{
-                    ...styles.chatArea,
-                    backgroundColor: theme.surface,
-                    border: `1px solid ${theme.border}`,
-                    boxShadow: theme.cardShadow,
+                    ...styles.placeholderTitle,
+                    color: theme.primaryText,
                   }}
                 >
-                  <div style={styles.chatScroll}>
-                    {messages.map((message) => (
-                      <MessageBubble
-                        key={message.id}
-                        message={message}
-                        theme={theme}
-                      />
-                    ))}
-                    <div ref={messageBottomRef} />
-                  </div>
+                  해당 화면은 추후 개발 예정입니다.
                 </div>
-              )}
+                <div
+                  style={{
+                    ...styles.placeholderSub,
+                    color: theme.secondaryText,
+                  }}
+                >
+                  현재는 Hi, AgentGo 화면만 1차 구현되었습니다.
+                </div>
+              </div>
+            ) : (
+              <div style={{ ...styles.homePanel, maxWidth: "1126px", gap: responsiveStyles.homePanelGap, padding: responsiveStyles.homePanelPadding }}>
+                <div style={isHomeEmpty ? styles.homeContentEmpty : styles.homeContent}>
+                  {isHomeEmpty ? (
+                    <div style={styles.emptyHero}>
+                      <img
+                        src={fallbackLogo}
+                        alt="AgentGo"
+                        style={styles.emptyHeroLogo}
+                      />
+                      <h1
+                        style={{
+                          ...styles.emptyHeroTitle,
+                          color: theme.primaryText,
+                        }}
+                      >
+                        무엇을 도와드릴까요?
+                      </h1>
+                      <p
+                        style={{
+                          ...styles.emptyHeroSub,
+                          color: theme.secondaryText,
+                        }}
+                      >
+                        원하는 작업을 선택하거나 입력해보세요.
+                      </p>
+                    </div>
+                  ) : (
+                    <div
+                      style={styles.chatArea}
+                    >
+                      <div style={styles.chatScroll}>
+                        {messages.map((message) => (
+                          <MessageBubble
+                            key={message.id}
+                            message={message}
+                            theme={theme}
+                            assistantIcon={fallbackLogo}
+                          />
+                        ))}
+                        <div ref={messageBottomRef} />
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-              <Composer
-                theme={theme}
-                text={composerText}
-                setText={setComposerText}
-                attachedFiles={attachedFiles}
-                onAttachClick={() => fileInputRef.current?.click()}
-                onRemoveFile={removeAttachedFile}
-                onSend={() => sendMessage()}
-                onToggleMic={() => setIsMicActive((prev) => !prev)}
-                isMicActive={isMicActive}
-                canSend={Boolean(normalizedComposer)}
-              />
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                style={{ display: "none" }}
-                onChange={handleFileSelect}
-              />
-
-              {isHomeEmpty ? (
-                <>
+                {isHomeEmpty ? (
+                  <div
+                    style={{
+                      ...styles.homeQuickSection,
+                      marginTop: isMobile ? "56px" : "clamp(120px, 22vh, 260px)",
+                    }}
+                  >
                   <div style={styles.homeTabs}>
                     {HOME_TABS.map((tab) => {
                       const isActive = activeHomeTab === tab;
@@ -424,9 +646,7 @@ export default function WorkspacePage({
                             color: isActive
                               ? theme.tabActiveText
                               : theme.tabText,
-                            border: `1px solid ${
-                              isActive ? theme.accent : theme.border
-                            }`,
+                            border: "none",
                           }}
                         >
                           {tab}
@@ -435,7 +655,7 @@ export default function WorkspacePage({
                     })}
                   </div>
 
-                  <div style={styles.quickActionGrid}>
+                  <div style={{ ...styles.quickActionGrid, gridTemplateColumns: responsiveStyles.quickActionGridColumns }}>
                     {QUICK_ACTIONS.map((action) => (
                       <button
                         key={action.id}
@@ -444,7 +664,7 @@ export default function WorkspacePage({
                         style={{
                           ...styles.quickActionCard,
                           backgroundColor: theme.surface,
-                          border: `1px solid ${theme.border}`,
+                          border: "none",
                           boxShadow: theme.softShadow,
                         }}
                       >
@@ -468,45 +688,40 @@ export default function WorkspacePage({
                       </button>
                     ))}
                   </div>
-                </>
+                </div>
               ) : null}
             </div>
           )}
         </div>
+
+        {activeMenu === "home" ? (
+          <>
+            <Composer
+              theme={theme}
+              text={composerText}
+              setText={setComposerText}
+              attachedFiles={attachedFiles}
+              onAttachClick={() => fileInputRef.current?.click()}
+              onDropFiles={appendAttachedFiles}
+              onRemoveFile={removeAttachedFile}
+              onSend={() => sendMessage()}
+              onToggleMic={() => setIsMicActive((prev) => !prev)}
+              isMicActive={isMicActive}
+              canSend={Boolean(normalizedComposer)}
+            />
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              style={{ display: "none" }}
+              onChange={handleFileSelect}
+            />
+          </>
+        ) : null}
+        </div>
       </main>
     </div>
-  );
-}
-
-function ThemeToggle({ isDarkMode, onToggle, theme }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-label="테마 전환"
-      title="테마 전환"
-      style={{
-        ...styles.themeToggleButton,
-        backgroundColor: isDarkMode
-          ? theme.toggleTrackDark
-          : theme.toggleTrackLight,
-        border: `1px solid ${
-          isDarkMode ? theme.toggleBorderDark : theme.toggleBorderLight
-        }`,
-        boxShadow: theme.softShadow,
-        justifyContent: isDarkMode ? "flex-end" : "flex-start",
-      }}
-    >
-      <span
-        style={{
-          ...styles.themeToggleThumb,
-          backgroundColor: isDarkMode
-            ? theme.toggleThumbDark
-            : theme.toggleThumbLight,
-          color: isDarkMode ? theme.toggleIconDark : theme.toggleIconLight,
-        }}
-      />
-    </button>
   );
 }
 
@@ -516,24 +731,58 @@ function Composer({
   setText,
   attachedFiles,
   onAttachClick,
+  onDropFiles,
   onRemoveFile,
   onSend,
   onToggleMic,
   isMicActive,
   canSend,
 }) {
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleDragOver = (event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    if (!isDragOver) {
+      setIsDragOver(true);
+    }
+  };
+
+  const handleDragLeave = (event) => {
+    const next = event.relatedTarget;
+    if (next && event.currentTarget.contains(next)) {
+      return;
+    }
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (event) => {
+    event.preventDefault();
+    setIsDragOver(false);
+    onDropFiles(event.dataTransfer?.files);
+  };
+
   return (
     <div
       style={{
         ...styles.composerWrap,
         backgroundColor: theme.surface,
-        border: `1px solid ${theme.border}`,
+        border: `1px solid ${isDragOver ? theme.accent : theme.border}`,
         boxShadow: theme.cardShadow,
       }}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       <textarea
         value={text}
         onChange={(event) => setText(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            onSend();
+          }
+        }}
         placeholder="AgentGo에게 물어보세요."
         style={{
           ...styles.composerTextarea,
@@ -641,8 +890,9 @@ function Composer({
   );
 }
 
-function MessageBubble({ message, theme }) {
+function MessageBubble({ message, theme, assistantIcon }) {
   const isUser = message.role === "user";
+  const isLoading = message.isLoading;
 
   return (
     <div
@@ -663,7 +913,36 @@ function MessageBubble({ message, theme }) {
           }`,
         }}
       >
-        <div style={styles.messageText}>{message.content}</div>
+        {isLoading ? (
+          <div style={styles.loadingContainer}>
+            <img
+              src={assistantIcon}
+              alt="AgentGo"
+              style={styles.assistantLogo}
+            />
+            <span style={styles.loadingText}>{message.content}</span>
+          </div>
+        ) : isUser ? (
+          <div style={styles.messageText}>{message.content}</div>
+        ) : (
+          <div style={styles.assistantMessageInner}>
+            <img
+              src={assistantIcon}
+              alt="AgentGo"
+              style={styles.assistantLogo}
+            />
+            <div style={styles.messageText}>
+              {message.richHtml ? (
+                <div
+                  style={styles.richHtmlContent}
+                  dangerouslySetInnerHTML={{ __html: message.richHtml }}
+                />
+              ) : (
+                message.content
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -703,6 +982,14 @@ function resolveAgentIcon(id) {
       return "summary";
     case "todo":
       return "activity";
+    case "contract_review":
+      return "policy";
+    case "meeting_summary":
+    case "document_summary":
+    case "revenue_checklist":
+      return "summary";
+    case "corporate_card":
+      return "policy";
     default:
       return "settings";
   }
@@ -773,6 +1060,21 @@ function Icon({ name, size = 18 }) {
           <path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
       );
+    case "help":
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.8" />
+          <path d="M9.5 9.8a2.5 2.5 0 1 1 4.2 1.8c-.8.7-1.7 1.2-1.7 2.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          <circle cx="12" cy="16.9" r="1" fill="currentColor" />
+        </svg>
+      );
+    case "copy":
+      return (
+        <svg {...props}>
+          <rect x="9" y="8" width="10" height="12" rx="2" stroke="currentColor" strokeWidth="1.8" />
+          <rect x="5" y="4" width="10" height="12" rx="2" stroke="currentColor" strokeWidth="1.8" />
+        </svg>
+      );
     case "mail":
       return (
         <svg {...props}>
@@ -816,9 +1118,13 @@ const styles = {
     display: "flex",
   },
   workspaceMain: {
+    display: "flex",
+    flexDirection: "column",
     flex: 1,
     minWidth: 0,
     position: "relative",
+    height: "100vh",
+    overflow: "hidden",
   },
   workspaceTopBar: {
     position: "absolute",
@@ -831,6 +1137,16 @@ const styles = {
   },
   dropdownWrap: {
     position: "relative",
+  },
+  helpIconButton: {
+    width: "34px",
+    height: "34px",
+    borderRadius: "10px",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    flexShrink: 0,
   },
   topActionButton: {
     height: "38px",
@@ -852,6 +1168,80 @@ const styles = {
     width: "286px",
     borderRadius: "14px",
     overflow: "hidden",
+  },
+  quickDropdownScroll: {
+    maxHeight: "342px",
+    overflowY: "auto",
+    textAlign: "left",
+  },
+  quickDropdownHeader: {
+    padding: "8px 10px",
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: "8px",
+  },
+  quickHeaderLabel: {
+    fontSize: "12px",
+    fontWeight: 700,
+    lineHeight: 1,
+  },
+  quickCopyAllButton: {
+    width: "30px",
+    height: "30px",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: "8px",
+    padding: 0,
+    cursor: "pointer",
+  },
+  quickQuestionRow: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "8px",
+    padding: "10px 12px",
+    fontSize: "13px",
+    lineHeight: 1.45,
+    textAlign: "left",
+  },
+  quickQuestionBullet: {
+    lineHeight: 1.2,
+    fontWeight: 800,
+    paddingTop: "1px",
+  },
+  quickQuestionText: {
+    flex: 1,
+    minWidth: 0,
+    textAlign: "left",
+    whiteSpace: "normal",
+    wordBreak: "break-word",
+  },
+  quickCopyItemButton: {
+    width: "28px",
+    height: "28px",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: "8px",
+    padding: 0,
+    cursor: "pointer",
+    flexShrink: 0,
+  },
+  quickCopyDoneButton: {
+    width: "auto",
+    minWidth: "58px",
+    padding: "0 8px",
+  },
+  quickCopyDoneLabel: {
+    fontSize: "11px",
+    fontWeight: 700,
+    lineHeight: 1,
+  },
+  quickQuestionEmpty: {
+    padding: "14px 12px",
+    fontSize: "13px",
+    textAlign: "left",
   },
   agentDropdownScroll: {
     maxHeight: "342px",
@@ -915,18 +1305,49 @@ const styles = {
     transition: "transform 0.2s ease",
   },
   workspaceBody: {
-    minHeight: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    padding: "72px 24px 32px 24px",
-  },
-  homePanel: {
-    width: "100%",
-    maxWidth: "760px",
+    flex: 1,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: "18px",
+    minHeight: 0,
+    overflow: "hidden",
+  },
+  workspaceContent: {
+    flex: 1,
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    minHeight: 0,
+    overflowY: "auto",
+  },
+  summaryPageWrap: {
+    width: "100%",
+    maxWidth: "100%",
+    minHeight: 0,
+  },
+  homePanel: {
+    width: "100%",
+    maxWidth: "1126px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "stretch",
+    flex: 1,
+    minHeight: 0,
+    position: "relative",
+    overflow: "visible",
+  },
+  homeContent: {
+    display: "flex",
+    flexDirection: "column",
+    flex: 1,
+    minHeight: 0,
+    overflow: "visible",
+  },
+  homeContentEmpty: {
+    display: "flex",
+    flexDirection: "column",
+    overflow: "visible",
   },
   emptyHero: {
     width: "100%",
@@ -956,8 +1377,13 @@ const styles = {
   },
   composerWrap: {
     width: "100%",
+    maxWidth: "1126px",
+    margin: "0 auto",
     borderRadius: "16px",
     padding: "12px 12px 0 12px",
+    position: "sticky",
+    bottom: 0,
+    zIndex: 12,
   },
   composerTextarea: {
     width: "100%",
@@ -1047,6 +1473,12 @@ const styles = {
     gap: "8px",
     marginTop: "4px",
   },
+  homeQuickSection: {
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+  },
   homeTabButton: {
     height: "32px",
     padding: "0 16px",
@@ -1070,6 +1502,7 @@ const styles = {
     gap: "12px",
     textAlign: "left",
     cursor: "pointer",
+    border: "none",
   },
   quickActionIcon: {
     width: "36px",
@@ -1103,14 +1536,17 @@ const styles = {
   },
   chatArea: {
     width: "100%",
-    borderRadius: "18px",
-    minHeight: "420px",
-    padding: "18px",
+    borderRadius: "0",
+    padding: "0",
     marginTop: "14px",
+    display: "flex",
+    flexDirection: "column",
+    minHeight: 0,
+    overflow: "visible",
+    backgroundColor: "transparent",
+    boxShadow: "none",
   },
   chatScroll: {
-    maxHeight: "calc(100vh - 330px)",
-    overflowY: "auto",
     display: "flex",
     flexDirection: "column",
     gap: "14px",
@@ -1130,21 +1566,37 @@ const styles = {
     wordBreak: "break-word",
     fontSize: "15px",
     lineHeight: 1.65,
+    textAlign: "left",
   },
-  themeToggleButton: {
-    width: "78px",
-    height: "44px",
-    borderRadius: "999px",
-    cursor: "pointer",
+  richHtmlContent: {
+    whiteSpace: "normal",
+    wordBreak: "normal",
+  },
+  assistantMessageInner: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "10px",
+  },
+  assistantLogo: {
+    width: "32px",
+    height: "32px",
+    borderRadius: "12px",
+    objectFit: "cover",
+    marginTop: "2px",
+    flexShrink: 0,
+  },
+  loadingContainer: {
     display: "flex",
     alignItems: "center",
-    padding: "4px",
-    transition: "all 0.2s ease",
+    gap: "10px",
   },
-  themeToggleThumb: {
-    width: "36px",
-    height: "36px",
-    borderRadius: "999px",
-    transition: "all 0.2s ease",
+  loadingIcon: {
+    fontSize: "16px",
+    flexShrink: 0,
+  },
+  loadingText: {
+    fontSize: "15px",
+    lineHeight: 1.65,
+    animation: "agentgoBlinking 1.2s infinite ease-in-out",
   },
 };

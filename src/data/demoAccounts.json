@@ -6,13 +6,15 @@
     "accounts": [
       {
         "roleLabel": "Admin",
-        "username": "admin_itcencloit",
-        "password": "123456"
+        "username": "itcencloit",
+        "password": "123456",
+        "visibleAgents": ["mail_receive", "mail_send", "calendar", "ai_web_search", "todo", "contract_review", "meeting_summary", "revenue_checklist", "document_summary", "corporate_card"]
       },
       {
         "roleLabel": "User",
         "username": "user_itcencloit",
-        "password": "123456"
+        "password": "123456",
+        "visibleAgents": ["mail_receive", "mail_send", "calendar", "ai_web_search", "todo", "contract_review", "meeting_summary", "revenue_checklist", "document_summary", "corporate_card"]
       }
     ]
   },
@@ -23,12 +25,14 @@
       {
         "roleLabel": "Admin",
         "username": "admin_busaneconomy",
-        "password": "123456"
+        "password": "123456",
+        "visibleAgents": ["mail_receive", "mail_send", "calendar", "ai_web_search", "todo", "contract_review", "meeting_summary", "revenue_checklist", "document_summary", "corporate_card"]
       },
       {
         "roleLabel": "User",
         "username": "user_busaneconmy",
-        "password": "123456"
+        "password": "123456",
+        "visibleAgents": ["mail_receive", "mail_send", "calendar", "ai_web_search", "todo", "contract_review", "meeting_summary", "revenue_checklist", "document_summary", "corporate_card"]
       }
     ]
   },
@@ -39,12 +43,14 @@
       {
         "roleLabel": "Admin",
         "username": "admin_pknu",
-        "password": "123456"
+        "password": "123456",
+        "visibleAgents": ["mail_receive", "mail_send", "calendar", "ai_web_search", "todo", "contract_review", "meeting_summary", "revenue_checklist", "document_summary", "corporate_card"]
       },
       {
         "roleLabel": "User",
         "username": "user_pknu",
-        "password": "123456"
+        "password": "123456",
+        "visibleAgents": ["mail_receive", "mail_send", "calendar", "ai_web_search", "todo", "contract_review", "meeting_summary", "revenue_checklist", "document_summary", "corporate_card"]
       }
     ]
   },
@@ -55,12 +61,14 @@
       {
         "roleLabel": "Admin",
         "username": "admin_dongseo",
-        "password": "123456"
+        "password": "123456",
+        "visibleAgents": ["mail_receive", "mail_send", "calendar", "ai_web_search", "todo", "contract_review", "meeting_summary", "revenue_checklist", "document_summary", "corporate_card"]
       },
       {
         "roleLabel": "User",
         "username": "user_dongseo",
-        "password": "123456"
+        "password": "123456",
+        "visibleAgents": ["mail_receive", "mail_send", "calendar", "ai_web_search", "todo", "contract_review", "meeting_summary", "revenue_checklist", "document_summary", "corporate_card"]
       }
     ]
   }

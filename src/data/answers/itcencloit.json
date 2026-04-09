@@ -1,7 +1,14 @@
 [
   {
-    "question": "근로 시간 등록해줘",
-    "answer": "아이티센클로잇 기준 근로 시간 등록 요청으로 확인되었습니다. 오늘 근무 시간은 기본 8시간 기준으로 등록 검토 상태입니다."
+    "question": "오늘 일정 알려줘",
+    "answer": "오늘의 일정 결과입니다.\n\n📋 일정 개요\n   ● 총 일정: 1개\n   ● 총 시간: 약 1시간 30분\n\n🎯 상세 일정\n   ● 10:00 ~ 11:30 | AgentGo 고도화 미팅\n   ● 위치: 11층 AX사업부 회의실\n   ● 참석자: 박소영, 김재덕, 정민영(본인)\n\n오늘 하루도 화이팅하세요! 😊",
+    "delay": 2,
+    "agentId": "calendar"
+  },
+  {
+    "question": "오늘 근무 시간 9시부터 17시까지 등록해줘",
+    "answer": "아이티센클로잇 기준 근로 시간 등록 요청이 완료되었습니다. \n오늘 근무 시간은 8시간으로 등록 검토 상태입니다.",
+    "agentId": "todo"
   },
   {
     "question": "아이티센클로잇 조직도 알려줘",
@@ -13,6 +20,199 @@
   },
   {
     "question": "이번 주 영업 보고서 요약해줘",
-    "answer": "아이티센클로잇 이번 주 영업 보고서 기준 신규 리드 12건, 제안 진행 4건, 미팅 예정 3건으로 정리되었습니다."
+    "answer": "아이티센클로잇 이번 주 영업 보고서 기준 신규 리드 12건, 제안 진행 4건, 미팅 예정 3건으로 정리되었습니다.",
+    "agentId": "document_summary"
+  },
+  {
+    "question": "이번 주 내가 받은 메일 요약해줘",
+    "answer": "이번 주에 수신하신 주요 메일 내용들을 요약해 드립니다.",
+    "delay": 2,
+    "agentId": "mail_receive",
+    "mailSummaryRows": [
+      {
+        "daybefore": 0,
+        "time": "10:26",
+        "sender": "박소영",
+        "subject": "[부산경제진흥원] AgentGo PoC 구축진행상황",
+        "summary": "부산경제진흥원 PoC 구축 관련 추가 논의 요청"
+      },
+      {
+        "daybefore": 0,
+        "time": "10:16",
+        "sender": "이규진",
+        "subject": "RE: 현대 오토에버 PoC 진행 필요",
+        "summary": "AIC 시스템 모니터링 관련 계획 회신"
+      },
+      {
+        "daybefore": -1,
+        "time": "09:58",
+        "sender": "이종연",
+        "subject": "[RE]RE: [부산경제진흥원] AgentGo PoC 구축진행상황",
+        "summary": "공공 클라우드(CSAP) 도입 절차 검토"
+      },
+      {
+        "daybefore": -1,
+        "time": "08:26",
+        "sender": "신기호",
+        "subject": "RE: [부산경제진흥원] AgentGo PoC 구축 진행상황",
+        "summary": "계약 절차를 위한 현장 승인 미팅 진행"
+      },
+      {
+        "daybefore": -2,
+        "time": "15:59",
+        "sender": "최재원",
+        "subject": "Fw: [IBK시스템] IBK디지털뱅킹 리빌딩 질의응답(3차)",
+        "summary": "IBK 디지털뱅킹 리빌딩 사업 관련 2~3차 기술 질의"
+      },
+      {
+        "daybefore": -2,
+        "time": "09:09",
+        "sender": "이규진",
+        "subject": "부경대/동서대 PoC 및 컨설팅 대응 의견",
+        "summary": "부경대 PoC 중심, 2천만 원 규모 대응 방향"
+      },
+      {
+        "daybefore": -2,
+        "time": "00:26",
+        "sender": "이슬기",
+        "subject": "Re: 부경대 자료 전달 및 FU 바랍니다.",
+        "summary": "동서대 AI 플랫폼 AgentGo 솔루션 제안 검토"
+      }
+    ],
+    "mailSummaryTemplate": [
+      "<div style=\"font-size: 15px; color: #17223b; line-height: 1.6;\">",
+      "  <p style=\"margin: 0 0 8px; font-weight: 700; font-size: 15px;\">이번 주 수신한 메일 요약 결과입니다.</p>",
+      "  <p style=\"margin: 0 0 14px; color: #4f5c78; font-size: 15px;\"><strong>총 {{rowsLength}}의 메일</strong>이 확인되었습니다.<br />주로 <strong>부산경제진흥원, 현대 오토에버, IBK시스템</strong> 등 주요 사업의 PoC 및 프로젝트 진행 상황과 관련된 내용 입니다.</p>",
+      "  <div style=\"display: flex; align-items: center; gap: 10px; margin-bottom: 12px;\">",
+      "    <span style=\"display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 8px; background: #eef4ff; color: #2f6fff; font-size: 14px;\">📧</span>",
+      "    <div style=\"font-size: 15px; font-weight: 700; color: #17223b;\">이번 주 수신 메일 요약</div>",
+      "  </div>",
+      "  <div style=\"overflow-x: auto;\">",
+      "    <table style=\"width: 100%; border-collapse: collapse; font-size: 14px; color: #17223b; text-align: left; table-layout: fixed;\">",
+      "      <thead>",
+      "        <tr>",
+      "          <th style=\"padding: 10px 12px; border-bottom: 2px solid #cbd5e1; font-weight: 700; width: 80px;\">날짜</th>",
+      "          <th style=\"padding: 10px 12px; border-bottom: 2px solid #cbd5e1; font-weight: 700; width: 72px;\">발신자</th>",
+      "          <th style=\"padding: 10px 12px; border-bottom: 2px solid #cbd5e1; font-weight: 700;\">제목</th>",
+      "          <th style=\"padding: 10px 12px; border-bottom: 2px solid #cbd5e1; font-weight: 700; width: 220px;\">주요 내용 요약</th>",
+      "        </tr>",
+      "      </thead>",
+      "      <tbody>{{rowHtml}}</tbody>",
+      "    </table>",
+      "  </div>",
+      "  <p style=\"margin: 16px 0 0; color: #4f5c78; font-size: 14px;\">",
+      "    주로 부산경제진흥원 PoC의 보안 기준 및 계약 승인 절차와 대학 대상(부경대/동서대) 영업 전략이 활발히 논의되었습니다. 상세 내용 확인이 필요하시면 말씀해 주세요! 😊",
+      "  </p>",
+      "  <div style=\"margin-top: 16px;\">",
+      "    <div style=\"color: #17223b; font-weight: 700; font-size: 15px; margin-bottom: 12px;\">📧 메일 목록 ({{rowsLength}}개)</div>",
+      "    {{mailListHtml}}",
+      "  </div>",
+      "</div>"
+    ]
+  },
+  {
+    "question": "__WORKSUMMARY_CONFIG__",
+    "answer": "",
+    "workSummary": {
+      "schedule": [
+        {
+          "title": "AgentGo 고도화 미팅",
+          "time": "오전 10:00 ~ 오전 11:30"
+        }
+      ],
+      "mails": [
+        {
+          "sender": "이규남",
+          "subject": "Re: [부산경제진흥원] AgentGo PoC 구축진행상황",
+          "time": "오후 02:56"
+        },
+        {
+          "sender": "박소영",
+          "subject": "뉴스크립팅 예시",
+          "time": "오후 01:59"
+        },
+        {
+          "sender": "박소영",
+          "subject": "Re: [부산경제진흥원] AgentGo PoC 구축진행상황",
+          "time": "오후 01:33"
+        }
+      ],
+      "news": {
+        "categoryLabel": "IT",
+        "sections": [
+          {
+            "title": "AI 및 클라우드 솔루션 확장",
+            "lines": [
+              "NHN클라우드는 일본 AX 시장 공략을 위해 클라우드 경쟁력을 부각하고 AI 교육 고도화에 나섰으며, 한컴은 AI와 생체인증으로 일본 시장 공략을 가속화하며 현지 기업과 협약을 체결했다.",
+              "LG CNS는 일본 비타치와 DX 동맹을 맺고 금융 DX 사업을 본격화하며 SAP 교체 수요를 공략한다.",
+              "이노그리드는 NHN 데이터 관련 발표를 예고하며, 데이터 통제 기반의 AX 도입을 강조했다."
+            ]
+          },
+          {
+            "title": "모바일 및 IT 인프라 동향",
+            "lines": [
+              "애플은 아이폰 에어 2세대 모델을 이어가고 갤럭시Z폴드8은 고사양 모델과 가격을 인상한다.",
+              "SK하이닉스는 펩에 고성능 SSD를 공급했으며, SKT는 CDMA 신화에 이어 AI 네트워크를 다음 30년의 게임체인저로 제시했다."
+            ]
+          },
+          {
+            "title": "IT 보안 및 서비스",
+            "lines": [
+              "기업들은 생성형 AI 확산에 맞춰 보안 거버넌스 체계를 강화하고 있으며, 클라우드 통합 운영 자동화 수요가 높아지고 있다."
+            ]
+          }
+        ],
+        "extraCategories": [
+          {
+            "label": "AI",
+            "sections": [
+              {
+                "title": "기업형 AI 에이전트 도입 가속",
+                "lines": [
+                  "국내 주요 기업들이 고객 응대와 내부 업무 자동화를 위해 AI 에이전트 파일럿을 본격 확대하고 있다.",
+                  "특히 상담 요약, 보고서 초안 작성, 지식 검색 결합 시나리오에서 생산성 개선 효과가 뚜렷하게 나타나고 있다."
+                ]
+              },
+              {
+                "title": "멀티모달 AI 활용 사례 확산",
+                "lines": [
+                  "텍스트뿐 아니라 이미지와 문서를 함께 이해하는 멀티모달 모델이 품질 검사와 문서 심사 업무에 적용되고 있다.",
+                  "현장에서는 도입 초기 정확도 기준과 인적 검수 프로세스를 병행해 안정적인 운영 체계를 구축하는 추세다."
+                ]
+              },
+              {
+                "title": "AI 거버넌스 및 보안 통제 강화",
+                "lines": [
+                  "금융·공공 조직을 중심으로 프롬프트 관리, 출력 검증, 민감정보 마스킹 정책을 포함한 AI 거버넌스 프레임워크가 고도화되고 있다.",
+                  "모델 사용 로그 추적과 권한 기반 접근 통제를 함께 적용해 규제 대응력을 높이려는 움직임이 빠르게 확산되고 있다."
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "todos": [
+        {
+          "title": "[부산경제진흥원] 보고자료 파악",
+          "status": "오늘까지",
+          "due": "2026-04-09까지"
+        },
+        {
+          "title": "[구다이크로브] 견적 작성 완료",
+          "status": "오늘까지",
+          "due": "2026-04-09까지"
+        },
+        {
+          "title": "AI 에이전트 배포 체크리스트 정리",
+          "status": "예정",
+          "due": "2026-04-10까지"
+        },
+        {
+          "title": "주간 업무 공유 회의록 전달",
+          "status": "완료",
+          "due": "2026-04-08 완료"
+        }
+      ]
+    }
   }
 ]

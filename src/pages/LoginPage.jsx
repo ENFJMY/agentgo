@@ -73,86 +73,8 @@ function Icon({ name, size = 18 }) {
   }
 }
 
-function ThemeToggle({ isDarkMode, onToggle, theme }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-label="테마 전환"
-      title="테마 전환"
-      style={{
-        ...styles.themeToggleButton,
-        backgroundColor: isDarkMode
-          ? theme.toggleTrackDark
-          : theme.toggleTrackLight,
-        border: `1px solid ${
-          isDarkMode ? theme.toggleBorderDark : theme.toggleBorderLight
-        }`,
-        boxShadow: theme.softShadow,
-        justifyContent: isDarkMode ? "flex-end" : "flex-start",
-      }}
-    >
-      <span
-        style={{
-          ...styles.themeToggleThumb,
-          backgroundColor: isDarkMode
-            ? theme.toggleThumbDark
-            : theme.toggleThumbLight,
-          color: isDarkMode ? theme.toggleIconDark : theme.toggleIconLight,
-          boxShadow: isDarkMode
-            ? "0 4px 12px rgba(15, 23, 42, 0.35)"
-            : "0 4px 12px rgba(37, 99, 235, 0.18)",
-        }}
-      >
-        {isDarkMode ? (
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M17 12.5A6.5 6.5 0 0 1 8.5 4a7.5 7.5 0 1 0 11.5 9.7c-.9-.1-1.9-.5-3-.1Z"
-              fill="currentColor"
-            />
-            <path
-              d="M18.8 5.4l.4 1.1 1.1.4-1.1.4-.4 1.1-.4-1.1-1.1-.4 1.1-.4.4-1.1Z"
-              fill="currentColor"
-              opacity="0.9"
-            />
-            <path
-              d="M14.7 3.2l.25.68.68.25-.68.25-.25.68-.25-.68-.68-.25.68-.25.25-.68Z"
-              fill="currentColor"
-              opacity="0.75"
-            />
-          </svg>
-        ) : (
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden="true"
-          >
-            <circle cx="12" cy="12" r="5.2" fill="currentColor" />
-            <path
-              d="M12 2.8v2.3M12 18.9v2.3M21.2 12h-2.3M5.1 12H2.8M18.5 5.5l-1.6 1.6M7.1 16.9l-1.6 1.6M18.5 18.5l-1.6-1.6M7.1 7.1 5.5 5.5"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
-          </svg>
-        )}
-      </span>
-    </button>
-  );
-}
-
 export default function LoginPage({
   theme,
-  isDarkMode,
-  onToggleTheme,
   clients,
   onLoginSuccess,
   fallbackLogo,
@@ -195,12 +117,6 @@ export default function LoginPage({
   return (
     <div style={styles.loginPage}>
       <div style={styles.loginTopRight}>
-        <ThemeToggle
-          isDarkMode={isDarkMode}
-          theme={theme}
-          onToggle={onToggleTheme}
-        />
-
         <button
           type="button"
           style={{
@@ -274,6 +190,11 @@ export default function LoginPage({
               onChange={(event) => {
                 setPassword(event.target.value);
                 if (loginMessage) setLoginMessage("");
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  handleLogin();
+                }
               }}
               style={{
                 ...styles.textInput,
@@ -525,6 +446,7 @@ const styles = {
     marginBottom: "8px",
     fontSize: "14px",
     fontWeight: 700,
+    textAlign: "left",
   },
   textInput: {
     width: "100%",
@@ -678,24 +600,5 @@ const styles = {
     marginTop: "2px",
     fontSize: "13px",
     fontWeight: 700,
-  },
-  themeToggleButton: {
-    width: "78px",
-    height: "44px",
-    borderRadius: "999px",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    padding: "4px",
-    transition: "all 0.2s ease",
-  },
-  themeToggleThumb: {
-    width: "36px",
-    height: "36px",
-    borderRadius: "999px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    transition: "all 0.2s ease",
   },
 };
