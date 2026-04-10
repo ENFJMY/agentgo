@@ -11,6 +11,10 @@ function ClientLogo({ src, fallbackSrc, alt, style }) {
   const [hasError, setHasError] = useState(false);
   const finalSrc = !src || hasError ? fallbackSrc : src;
 
+  useEffect(() => {
+    setHasError(false);
+  }, [src, fallbackSrc]);
+
   return (
     <img
       src={finalSrc}
@@ -19,6 +23,17 @@ function ClientLogo({ src, fallbackSrc, alt, style }) {
       onError={() => setHasError(true)}
     />
   );
+}
+
+function mergeLogoStyle(baseStyle, overrideStyle) {
+  if (!overrideStyle) return baseStyle;
+
+  return {
+    ...baseStyle,
+    ...Object.fromEntries(
+      Object.entries(overrideStyle).filter(([, value]) => value !== undefined)
+    ),
+  };
 }
 
 function Icon({ name, size = 18 }) {
@@ -265,6 +280,14 @@ export default function Sidebar({
   setIsSidebarCollapsed,
 }) {
   const currentClientLogo = currentClient?.logo || "";
+  const expandedLogoStyle = mergeLogoStyle(
+    styles.sidebarBrandLogo,
+    currentClient?.logoSize?.sidebar
+  );
+  const collapsedLogoStyle = mergeLogoStyle(
+    styles.sidebarBrandLogoCollapsed,
+    currentClient?.logoSize?.collapsed
+  );
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isModeSubMenuOpen, setIsModeSubMenuOpen] = useState(false);
   const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
@@ -316,11 +339,7 @@ export default function Sidebar({
             src={currentClientLogo}
             fallbackSrc={fallbackLogo}
             alt={`${session.clientName} 로고`}
-            style={
-              isSidebarCollapsed
-                ? styles.sidebarBrandLogoCollapsed
-                : styles.sidebarBrandLogo
-            }
+            style={isSidebarCollapsed ? collapsedLogoStyle : expandedLogoStyle}
           />
         </div>
 

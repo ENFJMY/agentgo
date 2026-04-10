@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 function AccountRow({ label, value, theme }) {
   return (
@@ -17,6 +17,10 @@ function ClientLogo({ src, fallbackSrc, alt, style }) {
   const [hasError, setHasError] = useState(false);
   const finalSrc = !src || hasError ? fallbackSrc : src;
 
+  useEffect(() => {
+    setHasError(false);
+  }, [src, fallbackSrc]);
+
   return (
     <img
       src={finalSrc}
@@ -25,6 +29,17 @@ function ClientLogo({ src, fallbackSrc, alt, style }) {
       onError={() => setHasError(true)}
     />
   );
+}
+
+function mergeLogoStyle(baseStyle, overrideStyle) {
+  if (!overrideStyle) return baseStyle;
+
+  return {
+    ...baseStyle,
+    ...Object.fromEntries(
+      Object.entries(overrideStyle).filter(([, value]) => value !== undefined)
+    ),
+  };
 }
 
 function Icon({ name, size = 18 }) {
@@ -285,7 +300,10 @@ export default function LoginPage({
                           src={client.logo}
                           fallbackSrc={fallbackLogo}
                           alt={`${client.clientName} 로고`}
-                          style={styles.clientHelpLogo}
+                          style={mergeLogoStyle(
+                            styles.clientHelpLogo,
+                            client.logoSize?.help
+                          )}
                         />
                         <div
                           style={{

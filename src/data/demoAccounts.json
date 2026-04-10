@@ -2,7 +2,11 @@
   {
     "clientName": "아이티센클로잇",
     "clientId": "itcencloit",
-    "logo": "/logos/itcencloit.png",
+    "logoSize": {
+      "sidebar": { "width": 150, "height": 24 },
+      "collapsed": { "width": 24, "height": 24 },
+      "help": { "width": 34, "height": 34 }
+    },
     "accounts": [
       {
         "roleLabel": "Admin",
@@ -14,13 +18,18 @@
         "roleLabel": "User",
         "username": "user_itcencloit",
         "password": "123456",
-        "visibleAgents": ["mail_receive", "mail_send", "calendar", "ai_web_search", "todo", "contract_review", "meeting_summary", "revenue_checklist", "document_summary", "corporate_card"]
+        "visibleAgents": ["mail_receive", "mail_send", "calendar", "ai_web_search", "todo"]
       }
     ]
   },
   {
     "clientName": "부산경제진흥원",
     "clientId": "busaneconomy",
+    "logoSize": {
+      "sidebar": { "width": 150, "height": 30 },
+      "collapsed": { "width": 24, "height": 24 },
+      "help": { "width": 34, "height": 34 }
+    },
     "accounts": [
       {
         "roleLabel": "Admin",
@@ -39,6 +48,11 @@
   {
     "clientName": "국립부경대학교",
     "clientId": "pknu",
+    "logoSize": {
+      "sidebar": { "width": 128, "height": 32 },
+      "collapsed": { "width": 24, "height": 24 },
+      "help": { "width": 34, "height": 34 }
+    },
     "accounts": [
       {
         "roleLabel": "Admin",
@@ -57,6 +71,11 @@
   {
     "clientName": "동서대학교",
     "clientId": "dongseo",
+    "logoSize": {
+      "sidebar": { "width": 150, "height": 24 },
+      "collapsed": { "width": 24, "height": 24 },
+      "help": { "width": 34, "height": 34 }
+    },
     "accounts": [
       {
         "roleLabel": "Admin",

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import agentGoLogo from "./assets/AgentGo_Logo.png";
+import agentGoLogo from "./assets/Logo/AgentGo_Logo.png";
+import agentGoIcon from "./assets/Icon/AgentGo_Icon.png";
 import demoAccounts from "./data/demoAccounts.json";
 import agentsSeed from "./data/agents.json";
 
@@ -13,6 +14,7 @@ import WorkspacePage from "./pages/WorkspacePage";
 
 const SESSION_KEY = "agentgo-session";
 const DEFAULT_BOT_MESSAGE = "해당 답변은 지금 학습중입니다.";
+const TITLE_PREFIX = "AgentGo";
 
 const ANSWER_MAP = {
   itcencloit: itcencloitAnswers,
@@ -20,6 +22,54 @@ const ANSWER_MAP = {
   pknu: pknuAnswers,
   dongseo: dongseoAnswers,
 };
+
+const logoAssetModules = import.meta.glob("./assets/Logo/*.{png,jpg,jpeg,svg,webp}", {
+  eager: true,
+  import: "default",
+});
+
+const iconAssetModules = import.meta.glob("./assets/Icon/*.{png,jpg,jpeg,svg,webp}", {
+  eager: true,
+  import: "default",
+});
+
+function normalizeAssetKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\.[^.]+$/g, "")
+    .replace(/[_-](logo|icon)$/g, "");
+}
+
+function buildAssetMap(modules) {
+  return Object.fromEntries(
+    Object.entries(modules).map(([path, asset]) => {
+      const fileName = path.split("/").pop() || "";
+      return [normalizeAssetKey(fileName), asset];
+    })
+  );
+}
+
+const LOGO_ASSET_MAP = buildAssetMap(logoAssetModules);
+const ICON_ASSET_MAP = buildAssetMap(iconAssetModules);
+
+function getClientAssetKey(client) {
+  return normalizeAssetKey(client.assetKey || client.clientId);
+}
+
+function resolveLogoAsset(client) {
+  return LOGO_ASSET_MAP[getClientAssetKey(client)] || agentGoLogo;
+}
+
+function resolveIconAsset(client) {
+  return ICON_ASSET_MAP[getClientAssetKey(client)] || agentGoIcon;
+}
+
+const normalizedDemoAccounts = demoAccounts.map((client) => ({
+  ...client,
+  logo: resolveLogoAsset(client),
+  favicon: resolveIconAsset(client),
+}));
 
 function readStorage(key, fallbackValue) {
   try {
@@ -201,8 +251,33 @@ export default function App() {
 
   const currentClient = useMemo(() => {
     if (!session) return null;
-    return demoAccounts.find((client) => client.clientId === session.clientId) || null;
+    return (
+      normalizedDemoAccounts.find((client) => client.clientId === session.clientId) ||
+      null
+    );
   }, [session]);
+
+  useEffect(() => {
+    const activeClientName = currentClient?.clientName || session?.clientName;
+    document.title = activeClientName
+      ? `${TITLE_PREFIX}-${activeClientName}`
+      : TITLE_PREFIX;
+
+    let faviconLink = document.querySelector("link[rel='icon']");
+    if (!faviconLink) {
+      faviconLink = document.createElement("link");
+      faviconLink.setAttribute("rel", "icon");
+      document.head.appendChild(faviconLink);
+    }
+
+    const faviconHref = currentClient?.favicon || agentGoIcon;
+    const faviconType = /\.jpe?g$/i.test(faviconHref)
+      ? "image/jpeg"
+      : "image/png";
+
+    faviconLink.setAttribute("type", faviconType);
+    faviconLink.setAttribute("href", faviconHref);
+  }, [currentClient, session]);
 
   const handleLoginSuccess = (matchedAccount) => {
     setSession({
@@ -210,7 +285,6 @@ export default function App() {
       clientName: matchedAccount.clientName,
       username: matchedAccount.username,
       roleLabel: matchedAccount.roleLabel,
-      logo: matchedAccount.logo || "",
       visibleAgents: matchedAccount.visibleAgents || [],
     });
   };
@@ -262,7 +336,7 @@ export default function App() {
       {!session ? (
         <LoginPage
           theme={theme}
-          clients={demoAccounts}
+          clients={normalizedDemoAccounts}
           onLoginSuccess={handleLoginSuccess}
           fallbackLogo={agentGoLogo}
           findMatchedAccount={findMatchedAccount}
