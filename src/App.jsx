@@ -15,6 +15,7 @@ import WorkspacePage from "./pages/WorkspacePage";
 const SESSION_KEY = "agentgo-session";
 const DEFAULT_BOT_MESSAGE = "해당 답변은 지금 학습중입니다.";
 const TITLE_PREFIX = "AgentGo";
+const STORAGE_KEY_PREFIX = "agentgo-";
 
 const ANSWER_MAP = {
   itcencloit: itcencloitAnswers,
@@ -226,6 +227,38 @@ function getWorkSummaryData(clientId) {
   return defaultSummaryEntry?.workSummary || null;
 }
 
+function clearStorageByPrefix(storage, prefix) {
+  if (!storage) return;
+
+  const keysToRemove = [];
+  for (let i = 0; i < storage.length; i += 1) {
+    const key = storage.key(i);
+    if (key && key.startsWith(prefix)) {
+      keysToRemove.push(key);
+    }
+  }
+
+  keysToRemove.forEach((key) => storage.removeItem(key));
+}
+
+async function clearAgentGoClientCache() {
+  clearStorageByPrefix(window.localStorage, STORAGE_KEY_PREFIX);
+  clearStorageByPrefix(window.sessionStorage, STORAGE_KEY_PREFIX);
+
+  if (!("caches" in window)) return;
+
+  try {
+    const cacheNames = await window.caches.keys();
+    const targets = cacheNames.filter((name) =>
+      String(name).toLowerCase().includes("agentgo")
+    );
+
+    await Promise.all(targets.map((name) => window.caches.delete(name)));
+  } catch {
+    // Ignore cache API failures in unsupported or restricted environments.
+  }
+}
+
 function getClientQuestions(clientId) {
   const clientAnswers = ANSWER_MAP[clientId] || [];
   const questions = clientAnswers
@@ -290,6 +323,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    void clearAgentGoClientCache();
     setSession(null);
   };
 
