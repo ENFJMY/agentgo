@@ -5,9 +5,9 @@ import WorksummaryPage from "./WorksummaryPage";
 const HOME_TABS = ["빠른 작업", "업무 자동화", "외부 도구"];
 
 const QUICK_ACTIONS = [
-  { id: "work-time", label: "근로 시간 등록해줘", icon: "clock" },
-  { id: "schedule", label: "오늘 일정 알려줘", icon: "calendar" },
-  { id: "mail-summary", label: "이번 주 내가 받은 메일 요약해줘", icon: "mail" },
+  { id: "work-time", label: "오늘 일정 알려줘", icon: "calendar" },
+  { id: "schedule", label: "이번 주 내가 받은 메일 요약해줘", icon: "mail" },
+  { id: "mail-summary", label: "이번 주 영업 보고서 요약해줘", icon: "clock" },
   { id: "policy", label: "내년 인사 관리 규정 알려줘", icon: "policy" },
 ];
 
